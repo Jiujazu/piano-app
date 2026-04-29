@@ -13,22 +13,34 @@ const COMBO_MILESTONES: [number, string][] = [
   [30, '💫 Meisterhaft! 💫'],
 ];
 
+// Compute 1–3 star rating from hits and misses.
+// 3 stars: ≤ 1 miss per 10 notes
+// 2 stars: ≤ 1 miss per 4 notes
+// 1 star:  finished the song
+export function computeStarRating(hits: number, misses: number): number {
+  const total = hits + misses;
+  if (total === 0) return 0;
+  const accuracy = hits / total;
+  if (accuracy >= 0.9) return 3;
+  if (accuracy >= 0.75) return 2;
+  return 1;
+}
+
 export function useScoring() {
-  const [stars, setStars] = useState(0);
+  const [hits, setHits] = useState(0);
+  const [misses, setMisses] = useState(0);
   const [combo, setCombo] = useState(0);
   const [comboMessage, setComboMessage] = useState<ComboMessage | null>(null);
   const comboIdRef = useRef(0);
 
   const addHit = useCallback(() => {
-    setStars(prev => prev + 1);
+    setHits(prev => prev + 1);
     setCombo(prev => {
       const newCombo = prev + 1;
-      // Check milestones
       for (const [threshold, text] of COMBO_MILESTONES) {
         if (newCombo === threshold) {
           const id = ++comboIdRef.current;
           setComboMessage({ text, id });
-          // Clear after 2.5 seconds
           setTimeout(() => {
             setComboMessage(prev => prev?.id === id ? null : prev);
           }, 2500);
@@ -39,11 +51,17 @@ export function useScoring() {
     });
   }, []);
 
+  const addMiss = useCallback(() => {
+    setMisses(prev => prev + 1);
+    setCombo(0);
+  }, []);
+
   const resetScoring = useCallback(() => {
-    setStars(0);
+    setHits(0);
+    setMisses(0);
     setCombo(0);
     setComboMessage(null);
   }, []);
 
-  return { stars, combo, comboMessage, addHit, resetScoring };
+  return { hits, misses, combo, comboMessage, addHit, addMiss, resetScoring };
 }

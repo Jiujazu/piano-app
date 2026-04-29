@@ -2,15 +2,23 @@ import { useEffect } from 'react';
 import confetti from 'canvas-confetti';
 
 interface EndScreenProps {
-  stars: number;
+  rating: number;       // 1–3 stars
+  hits: number;
+  misses: number;
+  isNewRecord: boolean;
   onReplay: () => void;
   onBack: () => void;
 }
 
-export function EndScreen({ stars, onReplay, onBack }: EndScreenProps) {
+const RATING_TEXT: Record<number, string> = {
+  1: 'Geschafft! 🎵',
+  2: 'Sehr gut! 🌟',
+  3: 'Perfekt! 🏆',
+};
+
+export function EndScreen({ rating, hits, misses, isNewRecord, onReplay, onBack }: EndScreenProps) {
   useEffect(() => {
-    // Fire confetti!
-    const duration = 3000;
+    const duration = rating >= 3 ? 4000 : rating >= 2 ? 2500 : 1500;
     const end = Date.now() + duration;
 
     function frame() {
@@ -34,7 +42,7 @@ export function EndScreen({ stars, onReplay, onBack }: EndScreenProps) {
       }
     }
     frame();
-  }, []);
+  }, [rating]);
 
   return (
     <div style={{
@@ -44,26 +52,51 @@ export function EndScreen({ stars, onReplay, onBack }: EndScreenProps) {
       flexDirection: 'column',
       alignItems: 'center',
       justifyContent: 'center',
-      gap: 24,
+      gap: 20,
       background: 'radial-gradient(ellipse at center, rgba(255,215,0,0.15) 0%, transparent 70%)',
     }}>
       <div style={{
-        fontSize: 72,
+        fontSize: 64,
         fontWeight: 900,
         animation: 'comboPopIn 0.5s ease-out',
       }}>
-        🎉 Bravo! 🎉
+        {RATING_TEXT[rating] ?? RATING_TEXT[1]}
       </div>
-      <div style={{
-        fontSize: 36,
-        fontWeight: 900,
-        display: 'flex',
-        alignItems: 'center',
-        gap: 12,
-      }}>
-        <span>⭐ {stars} Sterne gesammelt!</span>
+
+      {/* Three-star rating */}
+      <div style={{ display: 'flex', gap: 12, fontSize: 72 }}>
+        {[1, 2, 3].map(i => (
+          <span
+            key={i}
+            style={{
+              opacity: i <= rating ? 1 : 0.2,
+              filter: i <= rating ? 'drop-shadow(0 0 12px rgba(255,217,61,0.8))' : 'grayscale(1)',
+              animation: i <= rating ? `starPop 0.5s ease-out ${i * 0.25}s both` : undefined,
+              display: 'inline-block',
+            }}
+          >
+            ⭐
+          </span>
+        ))}
       </div>
-      <div style={{ display: 'flex', gap: 16, marginTop: 16 }}>
+
+      {isNewRecord && (
+        <div style={{
+          fontSize: 24,
+          fontWeight: 900,
+          color: '#ffd93d',
+          textShadow: '0 0 14px rgba(255,217,61,0.6)',
+          animation: 'comboPopIn 0.6s ease-out 0.4s both',
+        }}>
+          🎉 Neuer Rekord!
+        </div>
+      )}
+
+      <div style={{ fontSize: 18, opacity: 0.7 }}>
+        {hits} Treffer{misses > 0 ? ` · ${misses} verpasst` : ''}
+      </div>
+
+      <div style={{ display: 'flex', gap: 16, marginTop: 12 }}>
         <button
           onClick={onReplay}
           style={{
@@ -71,10 +104,10 @@ export function EndScreen({ stars, onReplay, onBack }: EndScreenProps) {
             border: 'none',
             borderRadius: 16,
             color: '#fff',
-            fontSize: 24,
+            fontSize: 22,
             fontWeight: 900,
             fontFamily: 'Nunito, sans-serif',
-            padding: '16px 40px',
+            padding: '14px 32px',
             cursor: 'pointer',
             boxShadow: '0 4px 20px rgba(0,204,0,0.3)',
           }}
@@ -88,10 +121,10 @@ export function EndScreen({ stars, onReplay, onBack }: EndScreenProps) {
             border: 'none',
             borderRadius: 16,
             color: '#fff',
-            fontSize: 24,
+            fontSize: 22,
             fontWeight: 900,
             fontFamily: 'Nunito, sans-serif',
-            padding: '16px 40px',
+            padding: '14px 32px',
             cursor: 'pointer',
             boxShadow: '0 4px 20px rgba(0,102,255,0.3)',
           }}
