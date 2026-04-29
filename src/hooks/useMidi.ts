@@ -3,12 +3,19 @@ import { MIDI_NOTE_MAP } from '../constants';
 import type { NoteName } from '../types';
 
 type NoteCallback = (note: NoteName) => void;
+type ConnectionCallback = (connected: boolean) => void;
 
-export function useMidi(onNoteOn: NoteCallback, onNoteOff: NoteCallback) {
+export function useMidi(
+  onNoteOn: NoteCallback,
+  onNoteOff: NoteCallback,
+  onConnectionChange?: ConnectionCallback,
+) {
   const onNoteOnRef = useRef(onNoteOn);
   const onNoteOffRef = useRef(onNoteOff);
+  const onConnRef = useRef(onConnectionChange);
   onNoteOnRef.current = onNoteOn;
   onNoteOffRef.current = onNoteOff;
+  onConnRef.current = onConnectionChange;
 
   useEffect(() => {
     if (!navigator.requestMIDIAccess) return;
@@ -23,7 +30,6 @@ export function useMidi(onNoteOn: NoteCallback, onNoteOff: NoteCallback) {
       if (!note) return;
 
       if (command === 0x90) {
-        // Note on (velocity > 0)
         const velocity = e.data[2] ?? 0;
         if (velocity > 0) {
           onNoteOnRef.current(note);
@@ -42,16 +48,18 @@ export function useMidi(onNoteOn: NoteCallback, onNoteOff: NoteCallback) {
         inputs.forEach(input => {
           input.onmidimessage = handleMidiMessage;
         });
+        onConnRef.current?.(inputs.length > 0);
       }
 
       connectInputs();
       access.onstatechange = connectInputs;
     }).catch(() => {
-      // MIDI not available — silent fallback
+      onConnRef.current?.(false);
     });
 
     return () => {
       inputs.forEach(input => input.onmidimessage = null);
+      onConnRef.current?.(false);
     };
   }, []);
 }

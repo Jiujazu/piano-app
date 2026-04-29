@@ -67,6 +67,11 @@ body {
   50% { transform: translateY(-10px); }
 }
 
+@keyframes hintPulse {
+  0%, 100% { transform: scale(1); filter: brightness(1); }
+  50%      { transform: scale(1.05); filter: brightness(1.15); }
+}
+
 /* Custom range slider styling */
 input[type="range"] {
   -webkit-appearance: none;

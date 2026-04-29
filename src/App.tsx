@@ -7,19 +7,29 @@ import './App.css';
 
 const STORAGE_KEY = 'pianoHeroStars';
 
-function loadStars(): Record<string, number> {
+function loadRatings(): Record<string, number> {
   try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+    const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+    if (raw && typeof raw === 'object') {
+      // Migrate old hit-count values (>3) down to 3 stars (assume best effort).
+      const out: Record<string, number> = {};
+      for (const [k, v] of Object.entries(raw)) {
+        const n = typeof v === 'number' ? v : 0;
+        out[k] = n > 3 ? 3 : Math.max(0, Math.min(3, n));
+      }
+      return out;
+    }
+    return {};
   } catch {
     return {};
   }
 }
 
-function saveStars(songId: string, newStars: number) {
-  const all = loadStars();
+function saveRating(songId: string, newRating: number) {
+  const all = loadRatings();
   const prev = all[songId] ?? 0;
-  if (newStars > prev) {
-    all[songId] = newStars;
+  if (newRating > prev) {
+    all[songId] = newRating;
     localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
   }
 }
@@ -32,9 +42,23 @@ function toggleFullscreen() {
   }
 }
 
+function StarRow({ rating }: { rating: number }) {
+  return (
+    <span style={{ display: 'inline-flex', gap: 2 }}>
+      {[1, 2, 3].map(i => (
+        <span key={i} style={{
+          color: '#ffd93d',
+          opacity: i <= rating ? 1 : 0.25,
+          filter: i <= rating ? 'drop-shadow(0 0 4px rgba(255,217,61,0.6))' : 'grayscale(1)',
+        }}>⭐</span>
+      ))}
+    </span>
+  );
+}
+
 export default function App() {
   const [selectedSong, setSelectedSong] = useState<Song | null>(null);
-  const [starCounts, setStarCounts] = useState(loadStars);
+  const [ratings, setRatings] = useState(loadRatings);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   useEffect(() => {
@@ -47,25 +71,25 @@ export default function App() {
 
   const handleBack = useCallback(() => {
     setSelectedSong(null);
-    setStarCounts(loadStars());
+    setRatings(loadRatings());
   }, []);
 
-  const handleSongComplete = useCallback((songId: string, earnedStars: number) => {
-    saveStars(songId, earnedStars);
-    setStarCounts(loadStars());
+  const handleSongComplete = useCallback((songId: string, rating: number) => {
+    saveRating(songId, rating);
+    setRatings(loadRatings());
   }, []);
 
   if (selectedSong) {
     return (
       <Game
         song={selectedSong}
+        prevBestRating={ratings[selectedSong.id] ?? 0}
         onBack={handleBack}
         onSongComplete={handleSongComplete}
       />
     );
   }
 
-  // Song selection screen
   return (
     <div style={{
       display: 'flex',
@@ -75,7 +99,6 @@ export default function App() {
       gap: 24,
       alignItems: 'center',
     }}>
-      {/* Fullscreen button */}
       <button
         onClick={toggleFullscreen}
         style={{
@@ -119,7 +142,7 @@ export default function App() {
           const colors = Object.values(NOTE_COLORS);
           const color1 = colors[i % colors.length]!;
           const color2 = colors[(i + 2) % colors.length]!;
-          const bestStars = starCounts[song.id] ?? 0;
+          const bestRating = ratings[song.id] ?? 0;
           return (
             <button
               key={song.id}
@@ -162,16 +185,9 @@ export default function App() {
               }}>
                 Level {song.level}
               </span>
-              {bestStars > 0 && (
-                <span style={{
-                  fontSize: 16,
-                  color: '#ffd93d',
-                  fontWeight: 900,
-                  fontFamily: 'Nunito, sans-serif',
-                }}>
-                  ⭐ {bestStars}
-                </span>
-              )}
+              <span style={{ fontSize: 22 }}>
+                <StarRow rating={bestRating} />
+              </span>
             </button>
           );
         })}
